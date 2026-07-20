@@ -1,0 +1,48 @@
+{
+  "name": "claude-code-cli-status-line",
+  "version": "1.0.0",
+  "description": "Cross-platform Claude Code status line: model, effort, context tokens and percent, session and weekly usage with reset countdowns, plus the model-specific weekly limit.",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "statusline",
+    "status-line",
+    "rate-limits",
+    "usage",
+    "cli"
+  ],
+  "homepage": "https://github.com/shabbir912213000/claude-code-cli-status-line#readme",
+  "bugs": {
+    "url": "https://github.com/shabbir912213000/claude-code-cli-status-line/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shabbir912213000/claude-code-cli-status-line.git"
+  },
+  "license": "MIT",
+  "author": "Shabbir Hossain",
+  "type": "commonjs",
+  "bin": {
+    "claude-code-cli-status-line": "bin/cli.js"
+  },
+  "main": "lib/render.js",
+  "files": [
+    "bin/",
+    "lib/",
+    "statusline.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "lint": "node --check bin/cli.js && node --check statusline.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ]
+}

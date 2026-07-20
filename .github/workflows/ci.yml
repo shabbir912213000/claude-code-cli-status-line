@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ['18', '20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm run lint
+      - run: npm test
+      # Install into a throwaway config dir and confirm the status line renders
+      # end to end on this platform.
+      - name: smoke test install
+        shell: bash
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-config
+        run: |
+          node bin/cli.js install --no-model-limits --yes
+          echo '{"model":{"display_name":"Fable 5"},"effort":{"level":"high"},"context_window":{"used_percentage":5,"current_usage":{"input_tokens":19400}}}' \
+            | node "$CLAUDE_CONFIG_DIR/claude-code-cli-status-line/statusline.js" | tee /tmp/line.txt
+          grep -q "Fable 5" /tmp/line.txt
+          node bin/cli.js uninstall
