@@ -7,7 +7,7 @@ const { install, uninstall, commandString, consentNotice } = require('../lib/ins
 const { load, save, defaults } = require('../lib/config');
 const { buildLine } = require('../lib/render');
 const { readToken, describeSource } = require('../lib/credentials');
-const { readCache, refresh, findModelWeekly } = require('../lib/usage');
+const { readCache, refresh, findModelWeekly, findCredits } = require('../lib/usage');
 const {
   runtimeDir, settingsPath, configPath, cachePath, claudeConfigDir,
 } = require('../lib/paths');
@@ -21,11 +21,11 @@ const ok = (s) => paint(s, 'green');
 const bad = (s) => paint(s, 'red');
 
 function parseFlags(argv) {
-  const flags = { yes: false, modelLimits: undefined };
+  const flags = { yes: false, usageApi: undefined };
   for (const arg of argv) {
     if (arg === '--yes' || arg === '-y') flags.yes = true;
-    else if (arg === '--model-limits') flags.modelLimits = true;
-    else if (arg === '--no-model-limits') flags.modelLimits = false;
+    else if (arg === '--usage-api' || arg === '--model-limits') flags.usageApi = true;
+    else if (arg === '--no-usage-api' || arg === '--no-model-limits') flags.usageApi = false;
   }
   return flags;
 }
@@ -42,9 +42,10 @@ ${bold('Usage')}
   npx ${pkg.name} config              Show the active config and its path
 
 ${bold('Install options')}
-  --model-limits      Enable the model-specific weekly limit (reads local OAuth token)
-  --no-model-limits   Disable it (default when non-interactive)
-  -y, --yes           Non-interactive; skips the opt-in prompt
+  --usage-api      Enable usage API extras: model-specific weekly limit, usage-credit
+                   spend, and session/weekly for credit-billed models (reads local OAuth token)
+  --no-usage-api   Disable them (default when non-interactive)
+  -y, --yes        Non-interactive; skips the opt-in prompt
 
 ${bold('Docs')}  ${pkg.homepage}
 `;
@@ -66,9 +67,9 @@ async function cmdInstall(flags) {
   process.stdout.write(`  config    ${dim(result.configFile)}\n`);
   process.stdout.write(`  settings  ${dim(result.settingsFile)}\n`);
   process.stdout.write(`  command   ${dim(commandString())}\n\n`);
-  process.stdout.write(`  model-specific weekly limit: ${result.modelWeekly ? ok('enabled') : dim('disabled')}\n`);
-  if (!result.modelWeekly) {
-    process.stdout.write(`  ${dim(`enable later with: npx ${pkg.name} install --model-limits`)}\n`);
+  process.stdout.write(`  usage API extras (model limit, credits): ${result.usageApi ? ok('enabled') : dim('disabled')}\n`);
+  if (!result.usageApi) {
+    process.stdout.write(`  ${dim(`enable later with: npx ${pkg.name} install --usage-api`)}\n`);
   }
   if (result.previous && result.previous !== commandString()) {
     process.stdout.write(`\n  ${paint('note', 'yellow')} replaced an existing statusLine command:\n    ${dim(result.previous)}\n`);
@@ -122,10 +123,10 @@ async function cmdDoctor() {
   }
 
   const config = load();
-  lines.push(`\n${bold('Model-specific weekly limit')}`);
-  check('enabled in config', config.segments.modelWeekly, config.segments.modelWeekly ? '' : 'opt-in; run install --model-limits');
+  lines.push(`\n${bold('Usage API extras')}`);
+  check('enabled in config', config.usageApi, config.usageApi ? '' : 'opt-in; run install --usage-api');
 
-  if (config.segments.modelWeekly) {
+  if (config.usageApi) {
     const { token, source } = readToken();
     check('OAuth token found', Boolean(token), token ? `via ${source}` : `expected at ${describeSource()}`);
     if (token) {
@@ -138,6 +139,10 @@ async function cmdDoctor() {
         lines.push(`  ${dim(scoped
           ? `example: model-scoped window found for Fable (${Math.round(scoped.percent)}%)`
           : 'no model-scoped weekly window on this plan for Fable; segment stays hidden')}`);
+        const credits = findCredits(result.data);
+        lines.push(`  ${dim(credits
+          ? `usage credits: enabled, $${credits.usedDollars.toFixed(2)} spent${credits.percent === null ? '' : ` (${Math.round(credits.percent)}% of limit)`}`
+          : 'usage credits: not enabled on this account; credits segment stays hidden')}`);
       }
     }
   }

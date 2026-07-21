@@ -34,24 +34,29 @@ npx claude-code-cli-status-line uninstall
 | `session - 67% (1h 32m)` | 5-hour rate limit and reset countdown | Claude.ai Pro/Max only |
 | `week - 30% (4d 15h)` | 7-day rate limit and reset countdown | Claude.ai Pro/Max only |
 | `fable - 26% (3d 1h)` | Model-specific weekly limit | Opt-in; see below |
+| `credits - $1.44` | Usage-credit spend (credit-billed models) | Opt-in; see below |
 
 Segments disappear rather than showing zeros when their data isn't available — before the first API response, on plans without rate limits, or for models with no separate weekly limit.
 
-## The model-specific weekly limit (opt-in)
+## Usage API extras (opt-in)
 
-Some plans have a separate weekly limit for a particular model, shown on the claude.ai usage page. Claude Code **does not** pass that number to status line scripts — it sends only the 5-hour and 7-day windows — so this feature reads it from the same usage API the usage page uses.
+Claude Code doesn't send every usage number to status line scripts. Some plans have a separate weekly limit for a particular model, shown on the claude.ai usage page, that never reaches the script. And for models billed to **usage credits** (e.g. Fable on some tiers), Claude Code omits `rate_limits` from the payload entirely — the session and weekly segments would simply vanish. This opt-in feature reads all of it from the same usage API the claude.ai usage page uses:
+
+- the weekly limit scoped to the selected model (when your plan has one), e.g. `fable - 26% (3d 1h)`
+- usage-credit spend for credit-billed models, e.g. `credits - $1.44` — upgrading automatically to a percentage like `credits - 34% ($3.40)` if your account exposes a spend limit
+- session/weekly usage for credit-billed models, restored from the API when stdin has none
 
 That requires your local Claude Code OAuth token, so it is **off by default** and the installer explains exactly what it does before enabling it:
 
 ```bash
-npx claude-code-cli-status-line install --model-limits    # enable
-npx claude-code-cli-status-line install --no-model-limits # disable
+npx claude-code-cli-status-line install --usage-api    # enable
+npx claude-code-cli-status-line install --no-usage-api # disable
 ```
 
 - **What is accessed:** your Claude Code OAuth token, from the macOS Keychain, or `~/.claude/.credentials.json` on Linux and Windows.
 - **What it is used for:** one HTTPS request to `https://api.anthropic.com/api/oauth/usage`, at most once every 5 minutes, cached locally.
 - **Where it goes:** only to Anthropic's own API. The token is never written to the cache, never logged, and never sent anywhere else.
-- **How it renders:** the segment appears only when the selected model has its own weekly window, and vanishes when you switch to a model that doesn't.
+- **How it renders:** each extra segment appears only when your plan actually has that data, and vanishes when it doesn't apply to the selected model.
 
 The refresh runs in a detached background process, so the status line never blocks on the network.
 
@@ -79,6 +84,7 @@ Defaults match the line at the top of this README. Notable keys:
 
 ```jsonc
 {
+  "usageApi": false,     // master switch for the opt-in feature above
   "segments": {          // turn individual segments on or off
     "model": true,
     "effort": true,
@@ -86,7 +92,8 @@ Defaults match the line at the top of this README. Notable keys:
     "contextPercent": true,
     "session": true,
     "week": true,
-    "modelWeekly": false // the opt-in feature above
+    "modelWeekly": true, // model-scoped weekly limit (needs usageApi)
+    "credits": true      // usage-credit spend (needs usageApi)
   },
   "resetCountdown": true,           // the "(1h 32m)" suffixes
   "separator": " | ",

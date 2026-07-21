@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { findModelWeekly } = require('../lib/usage');
+const { findModelWeekly, fallbackRateLimits, findCredits } = require('../lib/usage');
 const { extractToken } = require('../lib/credentials');
 const { commandString, isVersionManaged } = require('../lib/install');
 const { deepMerge, defaults } = require('../lib/config');
@@ -15,8 +15,8 @@ const USAGE = {
   seven_day_opus: null,
   seven_day_sonnet: null,
   limits: [
-    { kind: 'session', percent: 23, scope: null },
-    { kind: 'weekly_all', percent: 17, scope: null },
+    { kind: 'session', percent: 23, resets_at: '2026-07-19T22:00:00.437689+00:00', scope: null },
+    { kind: 'weekly_all', percent: 17, resets_at: '2026-07-22T20:00:00.437709+00:00', scope: null },
     {
       kind: 'weekly_scoped',
       percent: 26,
@@ -85,6 +85,44 @@ test('version-manager node paths are detected so they are not pinned', () => {
   assert.ok(!isVersionManaged('/usr/local/bin/node'));
   assert.ok(!isVersionManaged('/usr/bin/node'));
   assert.ok(!isVersionManaged('C:\\Program Files\\nodejs\\node.exe'));
+});
+
+test('fallback rate limits rebuild session/weekly from limits[]', () => {
+  const out = fallbackRateLimits(USAGE);
+  assert.strictEqual(out.five_hour.used_percentage, 23);
+  assert.strictEqual(out.seven_day.used_percentage, 17);
+  assert.strictEqual(out.five_hour.resets_at, Math.floor(Date.parse('2026-07-19T22:00:00.437689+00:00') / 1000));
+});
+
+test('fallback rate limits use legacy five_hour/seven_day keys when limits[] is absent', () => {
+  const legacy = {
+    five_hour: { utilization: 8, resets_at: 1_700_000_000 },
+    seven_day: { utilization: 41, resets_at: 1_700_100_000 },
+  };
+  const out = fallbackRateLimits(legacy);
+  assert.strictEqual(out.five_hour.used_percentage, 8);
+  assert.strictEqual(out.seven_day.resets_at, 1_700_100_000);
+  assert.strictEqual(fallbackRateLimits(null), null);
+  assert.strictEqual(fallbackRateLimits({}), null);
+});
+
+test('credits read spend, preferring amount_minor with its exponent', () => {
+  const usage = { spend: { enabled: true, used: { amount_minor: 144, currency: 'USD', exponent: 2 }, limit: null, percent: 0 } };
+  assert.deepStrictEqual(findCredits(usage), { usedDollars: 1.44, percent: null });
+});
+
+test('credits expose a percent only when a spend limit exists', () => {
+  const capped = { spend: { enabled: true, used: { amount_minor: 340, exponent: 2 }, limit: { amount_minor: 1000 }, percent: 34 } };
+  assert.deepStrictEqual(findCredits(capped), { usedDollars: 3.4, percent: 34 });
+});
+
+test('credits fall back to extra_usage and hide when disabled or absent', () => {
+  const extra = { extra_usage: { is_enabled: true, used_credits: 17.0, decimal_places: 2 } };
+  assert.deepStrictEqual(findCredits(extra), { usedDollars: 0.17, percent: null });
+  assert.strictEqual(findCredits({ spend: { enabled: false }, extra_usage: { is_enabled: false } }), null);
+  assert.strictEqual(findCredits({ spend: { enabled: true } }), null, 'enabled but no amount yet');
+  assert.strictEqual(findCredits(null), null);
+  assert.strictEqual(findCredits({}), null);
 });
 
 test('config merge keeps defaults for unspecified keys', () => {

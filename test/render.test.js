@@ -99,9 +99,62 @@ test('model-scoped weekly segment appears only for the matching model', () => {
   assert.ok(opus.endsWith('week - 30% (4d 15h)'), opus);
 });
 
-test('model-scoped segment stays hidden when the feature is off', () => {
+test('model-scoped segment stays hidden when its segment is off', () => {
   const usage = { limits: [{ kind: 'weekly_scoped', percent: 26, scope: { model: { display_name: 'Fable' } } }] };
-  assert.ok(!plain(SESSION, baseConfig(), { usage }).includes('fable'));
+  const config = baseConfig({ segments: { modelWeekly: false } });
+  assert.ok(!plain(SESSION, config, { usage }).includes('fable'));
+});
+
+// Claude Code sends no rate_limits at all for credit-billed models.
+const CREDIT_SESSION = {
+  model: { display_name: 'Fable 5' },
+  effort: { level: 'medium' },
+  context_window: { used_percentage: 4, current_usage: { input_tokens: 45900 } },
+};
+
+const CREDIT_USAGE = {
+  five_hour: { utilization: 8, resets_at: new Date((NOW + 15900) * 1000).toISOString() },
+  seven_day: { utilization: 41, resets_at: new Date((NOW + 104400) * 1000).toISOString() },
+  limits: [
+    { kind: 'session', percent: 8, resets_at: new Date((NOW + 15900) * 1000).toISOString(), scope: null },
+    { kind: 'weekly_all', percent: 41, resets_at: new Date((NOW + 104400) * 1000).toISOString(), scope: null },
+  ],
+  spend: { enabled: true, used: { amount_minor: 144, currency: 'USD', exponent: 2 }, limit: null, percent: 0 },
+};
+
+test('credit-billed model gets session/week from the usage API plus credit spend', () => {
+  const line = plain(CREDIT_SESSION, baseConfig(), { usage: CREDIT_USAGE });
+  assert.strictEqual(
+    line,
+    'Fable 5 (medium) | ctx - 45.9k | ctx - 4% | session - 8% (4h 25m) | week - 41% (1d 5h) | credits - $1.44',
+  );
+});
+
+test('credits upgrade to a percentage once the API exposes a spend limit', () => {
+  const usage = {
+    ...CREDIT_USAGE,
+    spend: {
+      enabled: true, used: { amount_minor: 340, currency: 'USD', exponent: 2 }, limit: { amount_minor: 1000, exponent: 2 }, percent: 34,
+    },
+  };
+  const line = plain(CREDIT_SESSION, baseConfig(), { usage });
+  assert.ok(line.endsWith('| credits - 34% ($3.40)'), line);
+});
+
+test('credit-billed model with no usage data degrades to context-only segments', () => {
+  const line = plain(CREDIT_SESSION, baseConfig(), { usage: null });
+  assert.strictEqual(line, 'Fable 5 (medium) | ctx - 45.9k | ctx - 4%');
+});
+
+test('plan-billed models keep stdin limits and never show credits', () => {
+  const line = plain(SESSION, baseConfig(), { usage: CREDIT_USAGE });
+  assert.ok(line.includes('session - 67%'), 'stdin limits win over the usage API');
+  assert.ok(!line.includes('credits'), line);
+});
+
+test('credits segment can be toggled off', () => {
+  const config = baseConfig({ segments: { credits: false } });
+  assert.ok(!plain(CREDIT_SESSION, config, { usage: CREDIT_USAGE }).includes('credits'));
 });
 
 test('colors apply thresholds and can be disabled', () => {
