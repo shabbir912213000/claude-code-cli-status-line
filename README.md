@@ -13,6 +13,33 @@ Fable 5 (high) | ctx - 19.4k | ctx - 5% | session - 67% (1h 32m) | week - 30% (4
 
 Percentages are colour-coded green → yellow → red as you approach a limit, and every limit shows how long until it resets.
 
+The line adapts to your model, plan, and config. A few of the views you might see:
+
+With the opt-in [usage API extras](#usage-api-extras-opt-in), plans with a model-scoped weekly limit get an extra segment:
+
+```
+Fable 5 (high) | ctx - 42.9k | ctx - 21% | session - 67% (1h 32m) | week - 30% (4d 15h) | fable - 26% (3d 1h)
+```
+
+Models billed to usage credits show spend instead — as plain dollars, or as a percentage when your account exposes a spend limit:
+
+```
+Fable 5 (high) | ctx - 19.4k | ctx - 5% | session - 12% (3h 40m) | week - 8% (5d 2h) | credits - $1.44
+Fable 5 (high) | ctx - 19.4k | ctx - 5% | session - 12% (3h 40m) | week - 8% (5d 2h) | credits - 34% ($3.40)
+```
+
+Models without a reasoning-effort setting drop the `(high)`, and segments with no data simply disappear — no zeros, no placeholders:
+
+```
+Haiku 4.5 | ctx - 128.3k | ctx - 64% | session - 82% (47m) | week - 71% (1d 3h)
+```
+
+Every segment can also be toggled individually in the [config](#configuration), down to a minimal line:
+
+```
+Fable 5 | ctx - 5%
+```
+
 ## Install
 
 ```bash
