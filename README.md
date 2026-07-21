@@ -43,18 +43,24 @@ Fable 5 | ctx - 5%
 ## Install
 
 ```bash
-npx claude-code-cli-status-line install
+npm install -g claude-code-cli-status-line
+claude-code-cli-status-line install
 ```
 
 Then restart Claude Code, or start a new session.
+
+Prefer not to install globally? Every command in this README also works as a one-shot via `npx`, e.g. `npx claude-code-cli-status-line install`.
 
 The installer copies a small runtime into your Claude config directory and points `statusLine` in `settings.json` at it. It deliberately does **not** run through `npx` on every refresh — the status line re-renders constantly, and `npx` startup would make it lag.
 
 To remove it:
 
 ```bash
-npx claude-code-cli-status-line uninstall
+claude-code-cli-status-line uninstall
+npm uninstall -g claude-code-cli-status-line
 ```
+
+The first command removes the status line from `settings.json` and deletes the runtime; the second removes the CLI itself.
 
 ## What each segment shows
 
@@ -81,8 +87,8 @@ Claude Code doesn't send every usage number to status line scripts. Some plans h
 That requires your local Claude Code OAuth token, so it is **off by default** and the installer explains exactly what it does before enabling it:
 
 ```bash
-npx claude-code-cli-status-line install --usage-api    # enable
-npx claude-code-cli-status-line install --no-usage-api # disable
+claude-code-cli-status-line install --usage-api    # enable
+claude-code-cli-status-line install --no-usage-api # disable
 ```
 
 - **What is accessed:** your Claude Code OAuth token, from the macOS Keychain, or `~/.claude/.credentials.json` on Linux and Windows.
@@ -109,7 +115,7 @@ Verified on macOS, Linux, and Windows. The package detects the platform and read
 Config lives at `<claude-config-dir>/claude-code-cli-status-line/config.json`. Show it with:
 
 ```bash
-npx claude-code-cli-status-line config
+claude-code-cli-status-line config
 ```
 
 Defaults match the line at the top of this README. Notable keys:

@@ -1,6 +1,6 @@
 {
   "name": "claude-code-cli-status-line",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Cross-platform Claude Code status line: model, effort, context tokens and percent, session and weekly usage with reset countdowns, plus the model-specific weekly limit.",
   "keywords": [
     "claude",
