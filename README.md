@@ -1,5 +1,10 @@
 # claude-code-cli-status-line
 
+[![npm version](https://img.shields.io/npm/v/claude-code-cli-status-line.svg)](https://www.npmjs.com/package/claude-code-cli-status-line)
+[![CI](https://github.com/shabbir912213000/claude-code-cli-status-line/actions/workflows/ci.yml/badge.svg)](https://github.com/shabbir912213000/claude-code-cli-status-line/actions/workflows/ci.yml)
+[![node >= 18](https://img.shields.io/node/v/claude-code-cli-status-line.svg)](https://www.npmjs.com/package/claude-code-cli-status-line)
+[![license MIT](https://img.shields.io/npm/l/claude-code-cli-status-line.svg)](https://github.com/shabbir912213000/claude-code-cli-status-line/blob/main/LICENSE)
+
 A cross-platform status line for the [Claude Code](https://code.claude.com) CLI. One line, at a glance:
 
 ```
