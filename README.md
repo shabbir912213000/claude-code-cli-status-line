@@ -5,62 +5,41 @@
 [![node >= 18](https://img.shields.io/node/v/claude-code-cli-status-line.svg)](https://www.npmjs.com/package/claude-code-cli-status-line)
 [![license MIT](https://img.shields.io/npm/l/claude-code-cli-status-line.svg)](https://github.com/shabbir912213000/claude-code-cli-status-line/blob/main/LICENSE)
 
-A cross-platform status line for the [Claude Code](https://code.claude.com) CLI. One line, at a glance:
+A cross-platform status line for the [Claude Code](https://code.claude.com) CLI. It shows the selected model, context use, and available usage limits at a glance.
+
+### Standard
 
 ```
 Fable 5 (high) | ctx - 19.4k | ctx - 5% | session - 67% (1h 32m) | week - 30% (4d 15h)
 ```
 
-Percentages are colour-coded green → yellow → red as you approach a limit, and every limit shows how long until it resets.
-
-The line adapts to your model, plan, and config. A few of the views you might see:
-
-With the opt-in [usage API extras](#usage-api-extras-opt-in), plans with a model-scoped weekly limit get an extra segment:
+### Model-specific weekly limit
 
 ```
 Fable 5 (high) | ctx - 42.9k | ctx - 21% | session - 67% (1h 32m) | week - 30% (4d 15h) | fable - 26% (3d 1h)
 ```
 
-Models billed to usage credits show spend instead — as plain dollars, or as a percentage when your account exposes a spend limit:
+### Credit-billed model
 
 ```
 Fable 5 (high) | ctx - 19.4k | ctx - 5% | session - 12% (3h 40m) | week - 8% (5d 2h) | credits - $1.44
-Fable 5 (high) | ctx - 19.4k | ctx - 5% | session - 12% (3h 40m) | week - 8% (5d 2h) | credits - 34% ($3.40)
 ```
 
-Models without a reasoning-effort setting drop the `(high)`, and segments with no data simply disappear — no zeros, no placeholders:
-
-```
-Haiku 4.5 | ctx - 128.3k | ctx - 64% | session - 82% (47m) | week - 71% (1d 3h)
-```
-
-Every segment can also be toggled individually in the [config](#configuration), down to a minimal line:
-
-```
-Fable 5 | ctx - 5%
-```
+Percentages are colour-coded green → yellow → red as they approach a limit. Segments without data disappear, and each segment can be toggled in the configuration.
 
 ## Install
 
 ```bash
-npm install -g claude-code-cli-status-line
-claude-code-cli-status-line install
+npx claude-code-cli-status-line@latest install
 ```
 
-Then restart Claude Code, or start a new session.
-
-Prefer not to install globally? Every command in this README also works as a one-shot via `npx`, e.g. `npx claude-code-cli-status-line install`.
-
-The installer copies a small runtime into your Claude config directory and points `statusLine` in `settings.json` at it. It deliberately does **not** run through `npx` on every refresh — the status line re-renders constantly, and `npx` startup would make it lag.
+The installer enables the basic status line immediately, then asks whether to enable optional Usage API extras. Restart Claude Code, or start a new session, when it finishes. `@latest` follows npm's current `latest` tag; use an explicit version when you need a reproducible install.
 
 To remove it:
 
 ```bash
-claude-code-cli-status-line uninstall
-npm uninstall -g claude-code-cli-status-line
+npx claude-code-cli-status-line@latest uninstall
 ```
-
-The first command removes the status line from `settings.json` and deletes the runtime; the second removes the CLI itself.
 
 ## What each segment shows
 
@@ -76,27 +55,16 @@ The first command removes the status line from `settings.json` and deletes the r
 
 Segments disappear rather than showing zeros when their data isn't available — before the first API response, on plans without rate limits, or for models with no separate weekly limit.
 
-## Usage API extras (opt-in)
+## Usage API extras
 
-Claude Code doesn't send every usage number to status line scripts. Some plans have a separate weekly limit for a particular model, shown on the claude.ai usage page, that never reaches the script. And for models billed to **usage credits** (e.g. Fable on some tiers), Claude Code omits `rate_limits` from the payload entirely — the session and weekly segments would simply vanish. This opt-in feature reads all of it from the same usage API the claude.ai usage page uses:
+Usage API extras add model-specific weekly limits, credit spend, and missing session or weekly limits for credit-billed models. They use the local Claude Code OAuth token for a cached request to Anthropic's usage API at most once every five minutes. The token is never written to the cache or logged.
 
-- the weekly limit scoped to the selected model (when your plan has one), e.g. `fable - 26% (3d 1h)`
-- usage-credit spend for credit-billed models, e.g. `credits - $1.44` — upgrading automatically to a percentage like `credits - 34% ($3.40)` if your account exposes a spend limit
-- session/weekly usage for credit-billed models, restored from the API when stdin has none
-
-That requires your local Claude Code OAuth token, so it is **off by default** and the installer explains exactly what it does before enabling it:
+Choose during installation, or change the setting later:
 
 ```bash
-claude-code-cli-status-line install --usage-api    # enable
-claude-code-cli-status-line install --no-usage-api # disable
+npx claude-code-cli-status-line@latest install --usage-api
+npx claude-code-cli-status-line@latest install --no-usage-api
 ```
-
-- **What is accessed:** your Claude Code OAuth token, from the macOS Keychain, or `~/.claude/.credentials.json` on Linux and Windows.
-- **What it is used for:** one HTTPS request to `https://api.anthropic.com/api/oauth/usage`, at most once every 5 minutes, cached locally.
-- **Where it goes:** only to Anthropic's own API. The token is never written to the cache, never logged, and never sent anywhere else.
-- **How it renders:** each extra segment appears only when your plan actually has that data, and vanishes when it doesn't apply to the selected model.
-
-The refresh runs in a detached background process, so the status line never blocks on the network.
 
 ## Platform support
 
@@ -115,7 +83,7 @@ Verified on macOS, Linux, and Windows. The package detects the platform and read
 Config lives at `<claude-config-dir>/claude-code-cli-status-line/config.json`. Show it with:
 
 ```bash
-claude-code-cli-status-line config
+npx claude-code-cli-status-line@latest config
 ```
 
 Defaults match the line at the top of this README. Notable keys:
@@ -154,7 +122,7 @@ Set `NO_COLOR=1` to render without ANSI colours.
 | `doctor` | Diagnose install, credentials, and API reachability |
 | `config` | Print the active config and its path |
 
-If the status line doesn't appear, run `doctor` first — it checks the Node version, whether `settings.json` is wired, and whether the usage API is reachable.
+If the status line doesn't appear, run `npx claude-code-cli-status-line@latest doctor` first. It checks the Node version, whether `settings.json` is wired, and whether the Usage API is reachable.
 
 ## Requirements
 

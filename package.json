@@ -34,8 +34,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/render.test.js test/usage.test.js",
-    "lint": "node --check bin/cli.js && node --check statusline.js"
+    "test": "node --test test/render.test.js test/usage.test.js test/cli.test.js test/package.test.js",
+    "lint": "node --check bin/cli.js && node --check lib/install.js && node --check statusline.js"
   },
   "engines": {
     "node": ">=18"

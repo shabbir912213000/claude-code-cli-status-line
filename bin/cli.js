@@ -3,7 +3,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { install, uninstall, commandString, consentNotice } = require('../lib/install');
+const {
+  install, uninstall, resolveUsageApi, setUsageApi,
+} = require('../lib/install');
 const { load, save, defaults } = require('../lib/config');
 const { buildLine } = require('../lib/render');
 const { readToken, describeSource } = require('../lib/credentials');
@@ -61,21 +63,23 @@ const SAMPLE = {
 };
 
 async function cmdInstall(flags) {
-  const result = await install(flags);
-  process.stdout.write(`\n${ok('✓')} Installed ${bold(pkg.name)}\n\n`);
-  process.stdout.write(`  runtime   ${dim(result.target)}\n`);
-  process.stdout.write(`  config    ${dim(result.configFile)}\n`);
-  process.stdout.write(`  settings  ${dim(result.settingsFile)}\n`);
-  process.stdout.write(`  command   ${dim(commandString())}\n\n`);
-  process.stdout.write(`  usage API extras (model limit, credits): ${result.usageApi ? ok('enabled') : dim('disabled')}\n`);
-  if (!result.usageApi) {
-    process.stdout.write(`  ${dim(`enable later with: npx ${pkg.name} install --usage-api`)}\n`);
+  try {
+    await install();
+  } catch (err) {
+    const detail = err?.code || 'unknown error';
+    throw new Error(`Could not install the status line (${detail}).`);
   }
-  if (result.previous && result.previous !== commandString()) {
-    process.stdout.write(`\n  ${paint('note', 'yellow')} replaced an existing statusLine command:\n    ${dim(result.previous)}\n`);
+
+  process.stdout.write(`${ok('✓')} Status line installed.\n\n`);
+  const usageApi = await resolveUsageApi(flags);
+  try {
+    setUsageApi(usageApi);
+  } catch (err) {
+    const detail = err?.code || 'unknown error';
+    throw new Error(`Status line installed, but could not update Usage API extras (${detail}).`);
   }
-  process.stdout.write(`\n  ${bold('Restart Claude Code (or start a new session) to see it.')}\n\n`);
-  process.stdout.write(`  Preview:\n    ${buildLine(SAMPLE, load(), { usage: readCache().data })}\n\n`);
+  process.stdout.write(`Usage API extras: ${usageApi ? 'enabled' : 'disabled'}\n`);
+  process.stdout.write('Restart Claude Code, or start a new session, to see it.\n');
 }
 
 function cmdUninstall() {
@@ -163,7 +167,6 @@ async function main() {
     case 'preview': return cmdPreview();
     case 'config': return cmdConfig();
     case 'doctor': return cmdDoctor();
-    case 'consent-notice': process.stdout.write(`${consentNotice()}\n`); return undefined;
     case '--version': case '-v': process.stdout.write(`${pkg.version}\n`); return undefined;
     case undefined: case 'help': case '--help': case '-h': process.stdout.write(HELP); return undefined;
     default:
@@ -174,6 +177,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  process.stderr.write(`${bad('error')} ${err?.message || err}\n`);
+  process.stderr.write(`${bad('error:')} ${err?.message || err}\n`);
   process.exitCode = 1;
 });
